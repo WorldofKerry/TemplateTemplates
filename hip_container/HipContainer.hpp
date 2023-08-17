@@ -19,19 +19,19 @@
 #endif
 
 template <typename T>
+    requires std::is_arithmetic_v<typename T::value_type>
 class SmartArray
 {
-    static_assert(std::is_arithmetic<T>::value, "");
-    T *host = nullptr;
-    T *device = nullptr;
+    T::value_type *host = nullptr;
+    T::value_type *device = nullptr;
     size_t bytes;
     size_t size;
 
 public:
-    SmartArray(std::vector<T> const &vec)
+    SmartArray(T const &vec)
     {
         size = vec.size();
-        bytes = size * sizeof(T);
+        bytes = size * sizeof(typename T::value_type);
         HIP_CALL(hipHostMalloc(&host, bytes));
         for (int i = 0; i < size; ++i)
         {
@@ -45,7 +45,7 @@ public:
             HIP_CALL(hipFree(device));
         }
     }
-    [[nodiscard]] T *toDevice()
+    [[nodiscard]] T::value_type *toDevice()
     {
         if (!device)
         {
@@ -55,16 +55,17 @@ public:
         }
         assert(false);
     }
-    [[nodiscard]] operator T *()
+
+    [[nodiscard]] operator typename T::value_type *()
     {
         return toDevice();
     }
 
-    [[nodiscard]] std::vector<T> getHost()
+    [[nodiscard]] T getHost()
     {
         HIP_CALL(hipMemcpy(host, device, bytes, hipMemcpyDeviceToHost));
-        std::vector<T> vec;
-        vec.assign(host, host + bytes / sizeof(T));
+        T vec;
+        vec.assign(host, host + bytes / sizeof(typename T::value_type));
         return vec;
     }
 };
