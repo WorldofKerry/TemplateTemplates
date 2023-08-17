@@ -15,7 +15,7 @@ public:
     {
         if (device)
         {
-            hipFree(device);
+            assert(hipFree(device) == hipSuccess);
         }
     }
     [[nodiscard]] T *toDevice()
