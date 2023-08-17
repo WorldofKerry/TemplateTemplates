@@ -28,7 +28,7 @@ class SmartArray
     size_t size;
 
 public:
-    SmartArray(T const &vec)
+    SmartArray(T &&vec)
     {
         size = vec.size();
         bytes = size * sizeof(typename T::value_type);

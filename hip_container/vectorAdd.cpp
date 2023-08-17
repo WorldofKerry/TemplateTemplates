@@ -50,9 +50,14 @@ void fillArray(T &v)
 
 int main()
 {
+    hipEvent_t start, stop;
+    HIP_CALL(hipEventCreate(&start));
+    HIP_CALL(hipEventCreate(&stop));
+    float ms;
+
     std::cout << "HIP vector addition example\n";
 
-    const int N = 16;
+    const int N = 1 << 28;
 
     std::vector<float> vala(N);
     fillArray(vala);
@@ -63,13 +68,22 @@ int main()
     auto a = SmartArray(std::move(vala));
     auto b = SmartArray(std::move(valb));
 
+    // Run Kernel
     int blockSize = N;
     int blocks = 1;
+
+    HIP_CALL(hipEventRecord(start));
+
     vecAdd<<<blocks, blockSize>>>(a.toDevice(), b.toDevice());
+
+    HIP_CALL(hipEventRecord(stop));
+    HIP_CALL(hipEventSynchronize(stop));
+    HIP_CALL(hipEventElapsedTime(&ms, start, stop));
+    std::cout << "Elapsed time = " << ms << std::endl;
 
     assert(hipGetLastError() == hipSuccess);
 
-    printVec(a.getHost());
+    // printVec(a.getHost());
 
     return 0;
 }
