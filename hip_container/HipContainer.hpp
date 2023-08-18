@@ -32,11 +32,16 @@ public:
     {
         size = vec.size();
         bytes = size * sizeof(typename T::value_type);
-        HIP_CALL(hipHostMalloc(&host, bytes));
-        for (int i = 0; i < size; ++i)
-        {
-            host[i] = vec[i];
-        }
+        // HIP_CALL(hipHostMalloc(&host, bytes)); // 153 ms
+        // for (int i = 0; i < size; ++i)
+        // {
+        //     host[i] = vec[i];
+        // }
+
+        // host = vec.data(); // 715 ms
+
+        host = vec.data();
+        HIP_CALL(hipHostRegister(host, bytes, hipHostRegisterDefault)); // 153 ms
     }
     ~SmartArray()
     {
