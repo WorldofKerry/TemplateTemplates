@@ -21,9 +21,9 @@ intT1 ceildiv(const intT1 numerator, const intT2 divisor)
     return (numerator + divisor - 1) / divisor;
 }
 
-__global__ void vecAdd(float *a, const float *b)
+__global__ void vecAdd(size_t *a, const size_t *b)
 {
-    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     a[idx] += b[idx];
 }
 
@@ -42,7 +42,7 @@ void printVec(const T v)
 template <typename T>
 void fillArray(T &v)
 {
-    for (int i = 0; i < v.size(); ++i)
+    for (size_t i = 0; i < v.size(); ++i)
     {
         v[i] = i; // sin(i);
     }
@@ -57,24 +57,25 @@ int main()
 
     std::cout << "HIP vector addition example\n";
 
-    const int N = 1 << 28;
+    const size_t N = 1 << 10; // 28 for benchmark
 
-    std::vector<float> vala(N);
+    std::vector<size_t> vala(N);
     fillArray(vala);
 
-    std::vector<float> valb(N);
+    std::vector<size_t> valb(N);
     fillArray(valb);
 
     auto a = SmartArray(std::move(vala));
     auto b = SmartArray(std::move(valb));
 
     // Run Kernel
-    int blockSize = N;
-    int blocks = 1;
+    const size_t blockSize = N;
+    const size_t blocks = 1;
 
     HIP_CALL(hipEventRecord(start));
 
-    vecAdd<<<blocks, blockSize>>>(a.toDevice(), b.toDevice());
+    // vecAdd<<<blocks, blockSize>>>(a.toDevice(), b.toDevice());
+    vecAdd<<<blocks, blockSize>>>(a, b);
 
     HIP_CALL(hipEventRecord(stop));
     HIP_CALL(hipEventSynchronize(stop));
@@ -82,6 +83,13 @@ int main()
     std::cout << "Elapsed time = " << ms << std::endl;
 
     assert(hipGetLastError() == hipSuccess);
+
+    auto container = a.getHost();
+    size_t error = 0;
+    for (size_t i = 0; i < container.size(); ++i) {
+        error += container[i] - 2LL * i;
+    }
+    std::cout << "ERROR: " << error << "\n";
 
     // printVec(a.getHost());
 

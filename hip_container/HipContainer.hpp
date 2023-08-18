@@ -22,8 +22,8 @@ template <typename T>
     requires std::is_arithmetic_v<typename T::value_type>
 class SmartArray
 {
-    T::value_type *host = nullptr;
     T::value_type *device = nullptr;
+    T container; 
     size_t bytes;
     size_t size;
 
@@ -32,16 +32,10 @@ public:
     {
         size = vec.size();
         bytes = size * sizeof(typename T::value_type);
-        // HIP_CALL(hipHostMalloc(&host, bytes)); // 153 ms
-        // for (int i = 0; i < size; ++i)
-        // {
-        //     host[i] = vec[i];
-        // }
 
-        // host = vec.data(); // 715 ms
+        HIP_CALL(hipHostRegister(vec.data(), bytes, hipHostRegisterDefault));
 
-        host = vec.data();
-        HIP_CALL(hipHostRegister(host, bytes, hipHostRegisterDefault)); // 153 ms
+        container = std::move(vec);
     }
     ~SmartArray()
     {
@@ -55,7 +49,7 @@ public:
         if (!device)
         {
             HIP_CALL(hipMalloc(&device, bytes));
-            HIP_CALL(hipMemcpy(device, host, bytes, hipMemcpyHostToDevice));
+            HIP_CALL(hipMemcpy(device, container.data(), bytes, hipMemcpyHostToDevice));
             return device;
         }
         assert(false);
@@ -68,9 +62,7 @@ public:
 
     [[nodiscard]] T getHost()
     {
-        HIP_CALL(hipMemcpy(host, device, bytes, hipMemcpyDeviceToHost));
-        T vec;
-        vec.assign(host, host + bytes / sizeof(typename T::value_type));
-        return vec;
+        HIP_CALL(hipMemcpy(container.data(), device, bytes, hipMemcpyDeviceToHost));
+        return container;
     }
 };
